@@ -1,0 +1,6 @@
+.git
+node_modules
+.env*
+*.txt
+test-postgres.mjs
+test

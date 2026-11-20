@@ -1,0 +1,51 @@
+# Runs the course's local checks on every pull request: 15 unit tests, the
+# PostgreSQL 18 integration test (Docker is available on the runner), the
+# Functions example and the cost estimate. It never contacts Google Cloud.
+name: local checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Unit tests
+        working-directory: app
+        run: |
+          npm ci
+          npm test
+
+      - name: PostgreSQL 18 integration test
+        working-directory: app
+        run: npm run test:postgres
+
+      - name: Container image builds and runs as node
+        working-directory: app
+        run: |
+          docker build -t task-api:ci .
+          test "$(docker run --rm --entrypoint id task-api:ci -un)" = node
+
+      - name: Functions example
+        working-directory: examples/functions
+        run: |
+          npm ci
+          node check-handler.mjs
+
+      - name: Cost estimate
+        run: node examples/cost/lab-cost.mjs
+
+      - name: Script syntax
+        run: for f in scripts/*.sh; do bash -n "$f"; done
